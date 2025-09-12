@@ -1,14 +1,14 @@
 // import { useState } from 'react'
 import './App.css'
 
-import FormularioIdade from './Formulario'
+import FormularioDataNascimento from './FormData'
 
 function App() {
 
   return (
     <>
       <div className='App'>
-        <FormularioIdade />
+        <FormularioDataNascimento />
       </div>
     </>
   )
