@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 type FormData = {
@@ -8,22 +9,43 @@ const FormularioDataNascimento = () => {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-    watch
   } = useForm<FormData>();
 
-  const dataNascimento = watch('dataNascimento');
+  const [idadeCalculada, setIdadeCalculada] = useState<number | null>(null);
+
+  // Função para calcular idade a partir da data de nascimento
+  const calcularIdade = (dataNasc: string): number => {
+    const hoje = new Date();
+    const nascimento = new Date(dataNasc);
+    
+    let ano = hoje.getFullYear() - nascimento.getFullYear();
+    const mesAtual = hoje.getMonth();
+    const diaAtual = hoje.getDate();
+    
+    const mesNasc = nascimento.getMonth();
+    const diaNasc = nascimento.getDate();
+    
+    // Ajusta a idade se ainda não fez aniversário este ano
+    if (mesAtual < mesNasc || (mesAtual === mesNasc && diaAtual < diaNasc)) {
+      ano--;
+    }
+    
+    return ano;
+  };
 
   const onSubmit = (data: FormData) => {
+    const idade = calcularIdade(data.dataNascimento);
+    setIdadeCalculada(idade);
     console.log('Dados do formulário:', data);
-    alert(`Data de nascimento enviada: ${data.dataNascimento}`);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
         <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
-          Calculadora de Idade
+          Formulário de Nascimento
         </h1>
         <p className="text-gray-600 text-center mb-6">Informe sua data de nascimento</p>
 
@@ -31,7 +53,7 @@ const FormularioDataNascimento = () => {
           {/* Campo de Data de Nascimento */}
           <div>
             <label htmlFor="dataNascimento" className="block text-sm font-medium text-gray-700 mb-2">
-              Data de Nascimento *
+              Data de Nascimento:
             </label>
             <input
               id="dataNascimento"
@@ -67,35 +89,33 @@ const FormularioDataNascimento = () => {
                 {errors.dataNascimento.message}
               </p>
             )}
-            
-            {/* Preview em tempo real */}
-            {dataNascimento && !errors.dataNascimento && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800 font-medium">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-1 w-1 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Data informada: {new Date(dataNascimento).toLocaleDateString('pt-BR')}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Botão de Enviar */}
           <div className="pt-2">
             <button
               type="submit"
-              disabled={!!errors.dataNascimento}
-              className={`w-full text-white font-semibold py-3 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                errors.dataNascimento
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 transform hover:scale-105'
-              }`}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-105"
             >
-              Enviar Data de Nascimento
+              Calcular Idade
             </button>
           </div>
         </form>
+
+        {/* Exibição da idade calculada */}
+        {idadeCalculada !== null && (
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 text-center mb-2">
+              Idade Calculada
+            </h3>
+            <p className="text-4xl font-bold text-blue-900 text-center">
+              {idadeCalculada} anos
+            </p>
+            <p className="text-sm text-blue-700 text-center mt-2">
+              Data de nascimento: {new Date(idadeCalculada ? watch('dataNascimento') : '').toLocaleDateString('pt-BR')}
+            </p>
+          </div>
+        )}
 
         {/* Informações adicionais */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -106,6 +126,7 @@ const FormularioDataNascimento = () => {
             <li>• Formato: DD/MM/AAAA</li>
             <li>• Data deve ser anterior à data atual</li>
             <li>• Campo obrigatório</li>
+            <li>• Clique em "Calcular Idade" para ver seu resultado</li>
           </ul>
         </div>
       </div>
