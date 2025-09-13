@@ -1,8 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 type FormData = {
   dataNascimento: string;
+};
+
+// Hook personalizado useLocalStorage
+const useLocalStorage = <T,>(key: string, initialValue: T) => {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      if (typeof window === 'undefined') return initialValue;
+      
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error('Erro ao acessar localStorage:', error);
+      return initialValue;
+    }
+  });
+
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      }
+    } catch (error) {
+      console.error('Erro ao salvar no localStorage:', error);
+    }
+  };
+
+  return [storedValue, setValue] as const;
 };
 
 const FormularioDataNascimento = () => {
@@ -10,10 +40,27 @@ const FormularioDataNascimento = () => {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormData>();
 
   const [idadeCalculada, setIdadeCalculada] = useState<number | null>(null);
+  
+  // Usando o hook useLocalStorage para persistir os dados
+  const [savedData, setSavedData] = useLocalStorage('formData', {
+    dataNascimento: '',
+    idadeCalculada: null as number | null
+  });
+
+  // Efeito para carregar dados salvos quando o componente montar
+  useEffect(() => {
+    if (savedData.dataNascimento) {
+      setValue('dataNascimento', savedData.dataNascimento);
+    }
+    if (savedData.idadeCalculada !== null) {
+      setIdadeCalculada(savedData.idadeCalculada);
+    }
+  }, [savedData, setValue]);
 
   // Função para calcular idade a partir da data de nascimento
   const calcularIdade = (dataNasc: string): number => {
@@ -38,6 +85,13 @@ const FormularioDataNascimento = () => {
   const onSubmit = (data: FormData) => {
     const idade = calcularIdade(data.dataNascimento);
     setIdadeCalculada(idade);
+    
+    // Salvar dados no localStorage
+    setSavedData({
+      dataNascimento: data.dataNascimento,
+      idadeCalculada: idade
+    });
+    
     console.log('Dados do formulário:', data);
   };
 
@@ -112,7 +166,10 @@ const FormularioDataNascimento = () => {
               {idadeCalculada} anos
             </p>
             <p className="text-sm text-blue-700 text-center mt-2">
-              Data de nascimento: {new Date(idadeCalculada ? watch('dataNascimento') : '').toLocaleDateString('pt-BR')}
+              Data de nascimento: {new Date(watch('dataNascimento')).toLocaleDateString('pt-BR')}
+            </p>
+            <p className="text-xs text-blue-600 text-center mt-2">
+              ✓ Dados salvos localmente
             </p>
           </div>
         )}
@@ -127,8 +184,26 @@ const FormularioDataNascimento = () => {
             <li>• Data deve ser anterior à data atual</li>
             <li>• Campo obrigatório</li>
             <li>• Clique em "Calcular Idade" para ver seu resultado</li>
+            <li>• Seus dados são salvos localmente no navegador</li>
           </ul>
         </div>
+
+        {/* Botão para limpar dados salvos */}
+        {savedData.dataNascimento && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => {
+                localStorage.removeItem('formData');
+                setValue('dataNascimento', '');
+                setIdadeCalculada(null);
+                window.location.reload();
+              }}
+              className="text-xs text-red-600 hover:text-red-800 underline"
+            >
+              Limpar dados salvos
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
