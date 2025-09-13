@@ -41,6 +41,17 @@ const useLocalStorage = <T,>(key: string, initialValue: T) => {
   return [storedValue, setValue] as const;
 };
 
+// Função para criar data sem problemas de fuso horário
+const criarDataLocal = (ano: number, mes: number, dia: number): Date => {
+  return new Date(ano, mes, dia);
+};
+
+// Função para converter string YYYY-MM-DD para data local
+const stringParaDataLocal = (dataString: string): Date => {
+  const [ano, mes, dia] = dataString.split('-').map(Number);
+  return criarDataLocal(ano, mes - 1, dia); // mês é 0-indexed no JavaScript
+};
+
 const FormularioDataNascimento = () => {
   const {
     register,
@@ -76,32 +87,53 @@ const FormularioDataNascimento = () => {
     }
   }, [savedData, setValue]);
 
-  // Função para calcular idade detalhada
-  const calcularIdadeDetalhada = (dataNasc: string): IdadeDetalhada => {
+  // Função para calcular idade detalhada CORRIGIDA
+  const calcularIdadeDetalhada = (dataNascString: string): IdadeDetalhada => {
     const hoje = new Date();
-    const nascimento = new Date(dataNasc);
-
-    // Normalizar as horas para evitar problemas de fuso horário
-    const hojeNormalizado = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    const nascimentoNormalizado = new Date(nascimento.getFullYear(), nascimento.getMonth(), nascimento.getDate());
-
-    let anos = hojeNormalizado.getFullYear() - nascimentoNormalizado.getFullYear();
-    let meses = hojeNormalizado.getMonth() - nascimentoNormalizado.getMonth();
-    let dias = hojeNormalizado.getDate() - nascimentoNormalizado.getDate();
-
+    const dataNasc = stringParaDataLocal(dataNascString);
+    
+    // Criar datas locais sem hora para cálculo preciso
+    const hojeLocal = criarDataLocal(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const nascimentoLocal = criarDataLocal(dataNasc.getFullYear(), dataNasc.getMonth(), dataNasc.getDate());
+    
+    let anos = hojeLocal.getFullYear() - nascimentoLocal.getFullYear();
+    let meses = hojeLocal.getMonth() - nascimentoLocal.getMonth();
+    let dias = hojeLocal.getDate() - nascimentoLocal.getDate();
+    
+    // Ajustar se o dia atual é anterior ao dia de nascimento
     if (dias < 0) {
-      meses -= 1;
       // Obter o último dia do mês anterior
-      const ultimoDiaMesAnterior = new Date(hojeNormalizado.getFullYear(), hojeNormalizado.getMonth(), 0).getDate();
-      dias += ultimoDiaMesAnterior;
+      const ultimoDiaMesAnterior = new Date(hojeLocal.getFullYear(), hojeLocal.getMonth(), 0).getDate();
+      dias = ultimoDiaMesAnterior - nascimentoLocal.getDate() + hojeLocal.getDate();
+      meses--;
     }
-
+    
+    // Ajustar se o mês atual é anterior ao mês de nascimento
     if (meses < 0) {
-      anos -= 1;
       meses += 12;
+      anos--;
     }
-
+    
     return { anos, meses, dias };
+  };
+
+  // Função de validação corrigida
+  const validarDataNascimento = (value: string): true | string => {
+    if (!value) return 'A data de nascimento é obrigatória';
+    
+    const data = stringParaDataLocal(value);
+    const hoje = new Date();
+    const hojeLocal = criarDataLocal(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    
+    if (isNaN(data.getTime())) {
+      return 'Data inválida';
+    }
+    
+    if (data > hojeLocal) {
+      return 'A data de nascimento não pode ser no futuro';
+    }
+    
+    return true;
   };
 
   const onSubmit = (data: FormData) => {
@@ -113,6 +145,12 @@ const FormularioDataNascimento = () => {
       dataNascimento: data.dataNascimento,
       idadeCalculada: idade
     });
+  };
+
+  // Formatar data para exibição sem problemas de fuso horário
+  const formatarDataExibicao = (dataString: string): string => {
+    const data = stringParaDataLocal(dataString);
+    return data.toLocaleDateString('pt-BR');
   };
 
   return (
@@ -135,26 +173,11 @@ const FormularioDataNascimento = () => {
               {...register('dataNascimento', {
                 required: 'A data de nascimento é obrigatória',
                 validate: {
-                  dataValida: (value) => {
-                    const data = new Date(value);
-                    const hoje = new Date();
-                    
-                    if (isNaN(data.getTime())) {
-                      return 'Data inválida';
-                    }
-                    
-                    if (data > hoje) {
-                      return 'A data de nascimento não pode ser no futuro';
-                    }
-                    
-                    return true;
-                  }
+                  dataValida: validarDataNascimento
                 }
               })}
               ref={(e) => {
-                // Registrar a ref para o React Hook Form
                 register('dataNascimento').ref(e);
-                // Atribuir também à nossa ref personalizada
                 inputRef.current = e;
               }}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition-colors ${
@@ -162,7 +185,7 @@ const FormularioDataNascimento = () => {
                   ? 'border-red-500 focus:ring-red-200'
                   : 'border-gray-300 focus:ring-blue-200 focus:border-blue-500'
               }`}
-              autoFocus // Fallback para navegadores mais antigos
+              autoFocus
             />
             
             {errors.dataNascimento && (
@@ -193,7 +216,7 @@ const FormularioDataNascimento = () => {
               {idadeCalculada.anos} anos, {idadeCalculada.meses} meses e {idadeCalculada.dias} dias
             </p>
             <p className="text-sm text-blue-700 text-center mt-2">
-              Data de nascimento: {new Date(watch('dataNascimento')).toLocaleDateString('pt-BR')}
+              Data de nascimento: {formatarDataExibicao(watch('dataNascimento'))}
             </p>
             <p className="text-xs text-blue-600 text-center mt-2">
               ✓ Dados salvos localmente
@@ -209,6 +232,7 @@ const FormularioDataNascimento = () => {
           <ul className="text-xs text-gray-600 space-y-1">
             <li>• Formato: DD/MM/AAAA</li>
             <li>• Data deve ser anterior à data atual</li>
+            <li>• Campo obrigatório</li>
             <li>• Clique em "Calcular Idade" para ver seu resultado</li>
             <li>• Seus dados são salvos localmente no navegador</li>
           </ul>
@@ -222,7 +246,6 @@ const FormularioDataNascimento = () => {
                 localStorage.removeItem('formData');
                 setValue('dataNascimento', '');
                 setIdadeCalculada(null);
-                // Focar no input novamente após limpar
                 if (inputRef.current) {
                   inputRef.current.focus();
                 }
