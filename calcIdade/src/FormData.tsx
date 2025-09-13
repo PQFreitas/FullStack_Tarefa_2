@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 
 type FormData = {
@@ -58,13 +58,21 @@ const FormularioDataNascimento = () => {
     idadeCalculada: null as IdadeDetalhada | null
   });
 
-  // Efeito para carregar dados salvos quando o componente montar
+  // useRef para focar no input automaticamente
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Efeito para carregar dados salvos e focar no input
   useEffect(() => {
     if (savedData.dataNascimento) {
       setValue('dataNascimento', savedData.dataNascimento);
     }
     if (savedData.idadeCalculada !== null) {
       setIdadeCalculada(savedData.idadeCalculada);
+    }
+
+    // Focar no input quando o componente montar
+    if (inputRef.current) {
+      inputRef.current.focus();
     }
   }, [savedData, setValue]);
 
@@ -73,13 +81,18 @@ const FormularioDataNascimento = () => {
     const hoje = new Date();
     const nascimento = new Date(dataNasc);
 
-    let anos = hoje.getFullYear() - nascimento.getFullYear();
-    let meses = hoje.getMonth() - nascimento.getMonth();
-    let dias = hoje.getDate() - nascimento.getDate();
+    // Normalizar as horas para evitar problemas de fuso horário
+    const hojeNormalizado = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const nascimentoNormalizado = new Date(nascimento.getFullYear(), nascimento.getMonth(), nascimento.getDate());
+
+    let anos = hojeNormalizado.getFullYear() - nascimentoNormalizado.getFullYear();
+    let meses = hojeNormalizado.getMonth() - nascimentoNormalizado.getMonth();
+    let dias = hojeNormalizado.getDate() - nascimentoNormalizado.getDate();
 
     if (dias < 0) {
       meses -= 1;
-      const ultimoDiaMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth(), 0).getDate();
+      // Obter o último dia do mês anterior
+      const ultimoDiaMesAnterior = new Date(hojeNormalizado.getFullYear(), hojeNormalizado.getMonth(), 0).getDate();
       dias += ultimoDiaMesAnterior;
     }
 
@@ -100,15 +113,13 @@ const FormularioDataNascimento = () => {
       dataNascimento: data.dataNascimento,
       idadeCalculada: idade
     });
-    
-    console.log('Dados do formulário:', data);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
         <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
-          Formulário de Nascimento
+          Calculadora de Idade
         </h1>
         <p className="text-gray-600 text-center mb-6">Informe sua data de nascimento</p>
 
@@ -140,11 +151,18 @@ const FormularioDataNascimento = () => {
                   }
                 }
               })}
+              ref={(e) => {
+                // Registrar a ref para o React Hook Form
+                register('dataNascimento').ref(e);
+                // Atribuir também à nossa ref personalizada
+                inputRef.current = e;
+              }}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition-colors ${
                 errors.dataNascimento
                   ? 'border-red-500 focus:ring-red-200'
                   : 'border-gray-300 focus:ring-blue-200 focus:border-blue-500'
               }`}
+              autoFocus // Fallback para navegadores mais antigos
             />
             
             {errors.dataNascimento && (
@@ -191,7 +209,6 @@ const FormularioDataNascimento = () => {
           <ul className="text-xs text-gray-600 space-y-1">
             <li>• Formato: DD/MM/AAAA</li>
             <li>• Data deve ser anterior à data atual</li>
-            <li>• Campo obrigatório</li>
             <li>• Clique em "Calcular Idade" para ver seu resultado</li>
             <li>• Seus dados são salvos localmente no navegador</li>
           </ul>
@@ -205,7 +222,10 @@ const FormularioDataNascimento = () => {
                 localStorage.removeItem('formData');
                 setValue('dataNascimento', '');
                 setIdadeCalculada(null);
-                window.location.reload();
+                // Focar no input novamente após limpar
+                if (inputRef.current) {
+                  inputRef.current.focus();
+                }
               }}
               className="text-xs text-red-600 hover:text-red-800 underline"
             >
