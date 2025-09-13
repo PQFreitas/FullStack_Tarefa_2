@@ -49,7 +49,7 @@ const criarDataLocal = (ano: number, mes: number, dia: number): Date => {
 // Função para converter string YYYY-MM-DD para data local
 const stringParaDataLocal = (dataString: string): Date => {
   const [ano, mes, dia] = dataString.split('-').map(Number);
-  return criarDataLocal(ano, mes - 1, dia); // mês é 0-indexed no JavaScript
+  return criarDataLocal(ano, mes - 1, dia);
 };
 
 const FormularioDataNascimento = () => {
@@ -87,12 +87,11 @@ const FormularioDataNascimento = () => {
     }
   }, [savedData, setValue]);
 
-  // Função para calcular idade detalhada CORRIGIDA
+  // Função para calcular idade detalhada
   const calcularIdadeDetalhada = (dataNascString: string): IdadeDetalhada => {
     const hoje = new Date();
     const dataNasc = stringParaDataLocal(dataNascString);
     
-    // Criar datas locais sem hora para cálculo preciso
     const hojeLocal = criarDataLocal(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     const nascimentoLocal = criarDataLocal(dataNasc.getFullYear(), dataNasc.getMonth(), dataNasc.getDate());
     
@@ -100,15 +99,12 @@ const FormularioDataNascimento = () => {
     let meses = hojeLocal.getMonth() - nascimentoLocal.getMonth();
     let dias = hojeLocal.getDate() - nascimentoLocal.getDate();
     
-    // Ajustar se o dia atual é anterior ao dia de nascimento
     if (dias < 0) {
-      // Obter o último dia do mês anterior
       const ultimoDiaMesAnterior = new Date(hojeLocal.getFullYear(), hojeLocal.getMonth(), 0).getDate();
       dias = ultimoDiaMesAnterior - nascimentoLocal.getDate() + hojeLocal.getDate();
       meses--;
     }
     
-    // Ajustar se o mês atual é anterior ao mês de nascimento
     if (meses < 0) {
       meses += 12;
       anos--;
@@ -117,7 +113,7 @@ const FormularioDataNascimento = () => {
     return { anos, meses, dias };
   };
 
-  // Função de validação corrigida
+  // Função de validação
   const validarDataNascimento = (value: string): true | string => {
     if (!value) return 'A data de nascimento é obrigatória';
     
@@ -147,115 +143,151 @@ const FormularioDataNascimento = () => {
     });
   };
 
-  // Formatar data para exibição sem problemas de fuso horário
+  // Formatar data para exibição
   const formatarDataExibicao = (dataString: string): string => {
     const data = stringParaDataLocal(dataString);
     return data.toLocaleDateString('pt-BR');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
-          Calculadora de Idade
-        </h1>
-        <p className="text-gray-600 text-center mb-6">Informe sua data de nascimento</p>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Campo de Data de Nascimento */}
-          <div>
-            <label htmlFor="dataNascimento" className="block text-sm font-medium text-gray-700 mb-2">
-              Data de Nascimento:
-            </label>
-            <input
-              id="dataNascimento"
-              type="date"
-              {...register('dataNascimento', {
-                required: 'A data de nascimento é obrigatória',
-                validate: {
-                  dataValida: validarDataNascimento
-                }
-              })}
-              ref={(e) => {
-                register('dataNascimento').ref(e);
-                inputRef.current = e;
-              }}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition-colors ${
-                errors.dataNascimento
-                  ? 'border-red-500 focus:ring-red-200'
-                  : 'border-gray-300 focus:ring-blue-200 focus:border-blue-500'
-              }`}
-              autoFocus
-            />
-            
-            {errors.dataNascimento && (
-              <p className="mt-2 text-sm text-red-600">
-                {errors.dataNascimento.message}
-              </p>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 md:p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        {/* Cabeçalho do formulário */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white">
+          <div className="flex items-center justify-center mb-3">
+            <div className="flex items-center justify-center mb-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-center mb-2 flex flex-col items-center">
+                <img src="src/assets/calendar.svg" alt="Calendário" className="w-12 h-12 mb-1" />
+                Calculadora de Idade
+                </h1>
+            </div>
           </div>
-
-          {/* Botão de Enviar */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-105"
-            >
-              Calcular Idade
-            </button>
-          </div>
-        </form>
-
-        {/* Exibição da idade calculada */}
-        {idadeCalculada !== null && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="text-lg font-semibold text-blue-800 text-center mb-2">
-              Idade Calculada
-            </h3>
-            <p className="text-2xl font-bold text-blue-900 text-center">
-              {idadeCalculada.anos} anos, {idadeCalculada.meses} meses e {idadeCalculada.dias} dias
-            </p>
-            <p className="text-sm text-blue-700 text-center mt-2">
-              Data de nascimento: {formatarDataExibicao(watch('dataNascimento'))}
-            </p>
-            <p className="text-xs text-blue-600 text-center mt-2">
-              ✓ Dados salvos localmente
-            </p>
-          </div>
-        )}
-
-        {/* Informações adicionais */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">
-            Informações:
-          </h3>
-          <ul className="text-xs text-gray-600 space-y-1">
-            <li>• Formato: DD/MM/AAAA</li>
-            <li>• Data deve ser anterior à data atual</li>
-            <li>• Campo obrigatório</li>
-            <li>• Clique em "Calcular Idade" para ver seu resultado</li>
-            <li>• Seus dados são salvos localmente no navegador</li>
-          </ul>
+          <p className="text-blue-100 text-center text-sm md:text-base">
+            Descubra sua idade exata em anos, meses e dias
+          </p>
         </div>
 
-        {/* Botão para limpar dados salvos */}
-        {savedData.dataNascimento && (
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => {
-                localStorage.removeItem('formData');
-                setValue('dataNascimento', '');
-                setIdadeCalculada(null);
-                if (inputRef.current) {
-                  inputRef.current.focus();
-                }
-              }}
-              className="text-xs text-red-600 hover:text-red-800 underline"
-            >
-              Limpar dados salvos
-            </button>
+        {/* Corpo do formulário */}
+        <div className="p-6 md:p-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Campo de Data de Nascimento */}
+            <div className="space-y-2">
+              <label htmlFor="dataNascimento" className="block text-sm font-medium text-gray-700 mb-1">
+                Data de Nascimento:
+              </label>
+              <div className="relative">
+                <input
+                  id="dataNascimento"
+                  type="date"
+                  {...register('dataNascimento', {
+                    required: 'A data de nascimento é obrigatória',
+                    validate: {
+                      dataValida: validarDataNascimento
+                    }
+                  })}
+                  ref={(e) => {
+                    register('dataNascimento').ref(e);
+                    inputRef.current = e;
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition-colors pl-10 ${
+                    errors.dataNascimento
+                      ? 'border-red-500 focus:ring-red-200'
+                      : 'border-gray-300 focus:ring-blue-200 focus:border-blue-500'
+                  }`}
+                  autoFocus
+                />
+              </div>
+              
+              {errors.dataNascimento && (
+                <p className="text-sm text-red-600 flex items-center mt-1">
+                  {errors.dataNascimento.message}
+                </p>
+              )}
+            </div>
+
+            {/* Botão de Enviar */}
+            <div className="pt-6">
+              <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
+              >
+              Calcular Minha Idade
+              </button>
+            </div>
+          </form>
+
+          {/* Exibição da idade calculada */}
+          {idadeCalculada !== null && (
+            <div className="mt-6 p-5 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200">
+              <h3 className="text-lg font-semibold text-green-800 text-center mb-3">
+                Sua Idade Exata
+              </h3>
+              
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="bg-white p-3 rounded-lg shadow-sm text-center border border-green-100">
+                  <div className="text-2xl md:text-3xl font-bold text-green-900">{idadeCalculada.anos}</div>
+                  <div className="text-xs md:text-sm text-green-700 mt-1">anos</div>
+                </div>
+                
+                <div className="bg-white p-3 rounded-lg shadow-sm text-center border border-green-100">
+                  <div className="text-2xl md:text-3xl font-bold text-green-900">{idadeCalculada.meses}</div>
+                  <div className="text-xs md:text-sm text-green-700 mt-1">meses</div>
+                </div>
+                
+                <div className="bg-white p-3 rounded-lg shadow-sm text-center border border-green-100">
+                  <div className="text-2xl md:text-3xl font-bold text-green-900">{idadeCalculada.dias}</div>
+                  <div className="text-xs md:text-sm text-green-700 mt-1">dias</div>
+                </div>
+              </div>
+              
+              <p className="text-sm text-green-700 text-center bg-white/50 py-2 rounded-lg">
+                Data de nascimento: {formatarDataExibicao(watch('dataNascimento'))}
+              </p>
+            </div>
+          )}
+
+          {/* Informações adicionais */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                <img src="src/assets/info.svg" alt="Informações" className="w-4 h-4 mr-2" />
+              Informações importantes:
+            </h3>
+            <ul className="text-xs text-gray-600 space-y-2">
+              <li className="flex items-start">
+                Formato: DD/MM/AAAA
+              </li>
+              <li className="flex items-start">
+                Data deve ser anterior à data atual
+              </li>
+              <li className="flex items-start">
+                Campo obrigatório para cálculo
+              </li>
+              <li className="flex items-start">
+                Seus dados são salvos localmente
+              </li>
+            </ul>
           </div>
-        )}
+
+          {/* Botão para limpar dados salvos */}
+          {savedData.dataNascimento && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => {
+                  localStorage.removeItem('formData');
+                  setValue('dataNascimento', '');
+                  setIdadeCalculada(null);
+                  if (inputRef.current) {
+                    inputRef.current.focus();
+                  }
+                }}
+                className="text-xs text-red-600 hover:text-red-800 underline flex items-center justify-center mx-auto"
+              >
+                <img src="src/assets/delete.svg" alt="Informações" className="w-4 h-4 mr-2" />
+                Limpar todos os dados salvos
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
