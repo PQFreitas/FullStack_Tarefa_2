@@ -5,6 +5,12 @@ type FormData = {
   dataNascimento: string;
 };
 
+type IdadeDetalhada = {
+  anos: number;
+  meses: number;
+  dias: number;
+};
+
 // Hook personalizado useLocalStorage
 const useLocalStorage = <T,>(key: string, initialValue: T) => {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -44,12 +50,12 @@ const FormularioDataNascimento = () => {
     formState: { errors },
   } = useForm<FormData>();
 
-  const [idadeCalculada, setIdadeCalculada] = useState<number | null>(null);
+  const [idadeCalculada, setIdadeCalculada] = useState<IdadeDetalhada | null>(null);
   
   // Usando o hook useLocalStorage para persistir os dados
   const [savedData, setSavedData] = useLocalStorage('formData', {
     dataNascimento: '',
-    idadeCalculada: null as number | null
+    idadeCalculada: null as IdadeDetalhada | null
   });
 
   // Efeito para carregar dados salvos quando o componente montar
@@ -62,28 +68,31 @@ const FormularioDataNascimento = () => {
     }
   }, [savedData, setValue]);
 
-  // Função para calcular idade a partir da data de nascimento
-  const calcularIdade = (dataNasc: string): number => {
+  // Função para calcular idade detalhada
+  const calcularIdadeDetalhada = (dataNasc: string): IdadeDetalhada => {
     const hoje = new Date();
     const nascimento = new Date(dataNasc);
-    
-    let ano = hoje.getFullYear() - nascimento.getFullYear();
-    const mesAtual = hoje.getMonth();
-    const diaAtual = hoje.getDate();
-    
-    const mesNasc = nascimento.getMonth();
-    const diaNasc = nascimento.getDate();
-    
-    // Ajusta a idade se ainda não fez aniversário este ano
-    if (mesAtual < mesNasc || (mesAtual === mesNasc && diaAtual < diaNasc)) {
-      ano--;
+
+    let anos = hoje.getFullYear() - nascimento.getFullYear();
+    let meses = hoje.getMonth() - nascimento.getMonth();
+    let dias = hoje.getDate() - nascimento.getDate();
+
+    if (dias < 0) {
+      meses -= 1;
+      const ultimoDiaMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth(), 0).getDate();
+      dias += ultimoDiaMesAnterior;
     }
-    
-    return ano;
+
+    if (meses < 0) {
+      anos -= 1;
+      meses += 12;
+    }
+
+    return { anos, meses, dias };
   };
 
   const onSubmit = (data: FormData) => {
-    const idade = calcularIdade(data.dataNascimento);
+    const idade = calcularIdadeDetalhada(data.dataNascimento);
     setIdadeCalculada(idade);
     
     // Salvar dados no localStorage
@@ -162,8 +171,8 @@ const FormularioDataNascimento = () => {
             <h3 className="text-lg font-semibold text-blue-800 text-center mb-2">
               Idade Calculada
             </h3>
-            <p className="text-4xl font-bold text-blue-900 text-center">
-              {idadeCalculada} anos
+            <p className="text-2xl font-bold text-blue-900 text-center">
+              {idadeCalculada.anos} anos, {idadeCalculada.meses} meses e {idadeCalculada.dias} dias
             </p>
             <p className="text-sm text-blue-700 text-center mt-2">
               Data de nascimento: {new Date(watch('dataNascimento')).toLocaleDateString('pt-BR')}
